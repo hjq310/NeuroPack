@@ -1,0 +1,13 @@
+{
+    "LTDWIN": 1,
+    "EXTIN": 3,
+    "LTPWIN": 1,
+    "NETSIZE": 7,
+    "DEPTH": 1,
+    "PFLOOR": 4000,
+    "PCEIL": 9300,
+    "WEIGHTSCALE": 1.0,
+    "NORMALISE": true,
+    "LEAKAGE": -0.2,
+    "FIRETH": 0.8
+}

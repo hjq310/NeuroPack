@@ -1,0 +1,14 @@
+# timestamp - comma-separated list of neurons forced to spike at this timestep
+11 - 1
+12 - 2
+13 - 3
+14 - 1
+15 - 2
+16 - 3
+17 - 1
+18 - 2
+19 - 3
+20 - 1
+21 - 2
+22 - 3
+23 - 1, 2
