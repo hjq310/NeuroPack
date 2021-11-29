@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>581</width>
-    <height>426</height>
+    <width>1113</width>
+    <height>1211</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,6 +40,30 @@
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <layout class="QGridLayout" name="gridLayout">
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Neuron</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="4">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Row Number</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="5">
+         <widget class="QSpinBox" name="stepSpinBox">
+          <property name="minimumSize">
+           <size>
+            <width>75</width>
+            <height>0</height>
+           </size>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_2">
           <property name="text">
@@ -47,7 +71,10 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
+        <item row="3" column="3">
+         <widget class="QSpinBox" name="LayerSpinBox"/>
+        </item>
+        <item row="2" column="0">
          <widget class="QLabel" name="label">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -60,25 +87,102 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="variableSelectionCombo"/>
-        </item>
-        <item row="1" column="1">
+        <item row="2" column="1" colspan="4">
          <widget class="QSlider" name="stepSlider">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
-        <item row="1" column="2">
-         <widget class="QSpinBox" name="stepSpinBox">
-          <property name="minimumSize">
-           <size>
-            <width>75</width>
-            <height>0</height>
-           </size>
+        <item row="0" column="1" colspan="5">
+         <widget class="QComboBox" name="variableSelectionCombo">
+          <item>
+           <property name="text">
+            <string>weight mapping in the array</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>weight mapping for each layer</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>membrane voltage changes (training)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>membrane voltage changes (test)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>membrane recovery variable changes (training, only for Izhikevich neuron model)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>membrane recovery variable changes (test, only for Izhikevich neuron model)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>fire history (training)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>fire history (test)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>input stimulus (training)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>input stimulus (test)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>error for each neuron (training, not applicable for unsupervised learning)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>error for each neuron (test, not applicable for unsupervised learning)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>expected weight mapping for each layer</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>weight error for each layer</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QSpinBox" name="NeuronSpinBox"/>
+        </item>
+        <item row="3" column="2">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Layer</string>
           </property>
          </widget>
+        </item>
+        <item row="3" column="5">
+         <widget class="QSpinBox" name="RowNumSpinBox"/>
         </item>
        </layout>
       </item>

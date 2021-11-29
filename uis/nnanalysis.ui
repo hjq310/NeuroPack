@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>676</width>
-    <height>540</height>
+    <width>1275</width>
+    <height>1242</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,103 +16,10 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label">
+     <item row="2" column="4">
+      <widget class="QLabel" name="label_9">
        <property name="text">
-        <string>Trials</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>LTD Voltage</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>LTP Pulse Width</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>LTD Pulse Width</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QLineEdit" name="ltpPWEdit">
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1" colspan="3">
-      <widget class="QLineEdit" name="trialsEdit">
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="3">
-      <widget class="QLineEdit" name="ltdPWEdit">
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="ltpVEdit">
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>LTP Voltage</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="3">
-      <widget class="QLineEdit" name="ltdVEdit">
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
+        <string>tp</string>
        </property>
       </widget>
      </item>
@@ -123,7 +30,78 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1" colspan="3">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>a0p</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="ApEdit">
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="6">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>a1n</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Ap</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="7">
+      <widget class="QLineEdit" name="a1nEdit">
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLineEdit" name="AnEdit"/>
+     </item>
+     <item row="4" column="1" colspan="7">
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <item>
+        <widget class="QSlider" name="globalStepSlider">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="globalStepSpinBox"/>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox">
+         <property name="text">
+          <string>Locked step</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="1" colspan="7">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QLineEdit" name="datasetEdit">
@@ -147,54 +125,141 @@
        </item>
       </layout>
      </item>
+     <item row="2" column="7">
+      <widget class="QLineEdit" name="tnEdit">
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Training</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="a0pEdit">
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Step</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="6">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>tn</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>An</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="5">
+      <widget class="QLineEdit" name="tpEdit"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>a0n</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="3">
+      <widget class="QLineEdit" name="a0nEdit"/>
+     </item>
+     <item row="3" column="4">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>a1p</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="5">
+      <widget class="QLineEdit" name="a1pEdit"/>
+     </item>
+     <item row="12" column="4" colspan="4">
+      <widget class="QPushButton" name="RemoveRowBotton">
+       <property name="text">
+        <string>Remove</string>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="0" colspan="4">
+      <widget class="QPushButton" name="AddRowBotton">
+       <property name="text">
+        <string>Add</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="3">
+      <widget class="QLineEdit" name="TrainingEdit">
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Test</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="5" colspan="3">
+      <widget class="QLineEdit" name="testEdit"/>
+     </item>
     </layout>
    </item>
    <item>
-    <widget class="QSplitter" name="splitter">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+    <widget class="QScrollArea" name="mainScrollArea">
+     <property name="widgetResizable">
+      <bool>true</bool>
      </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <widget class="QListWidget" name="toolsListWidget">
-      <property name="maximumSize">
-       <size>
-        <width>175</width>
-        <height>16777215</height>
-       </size>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1243</width>
+        <height>952</height>
+       </rect>
       </property>
-      <property name="styleSheet">
-       <string notr="true">#toolsListWidget::item {
-  padding: 5px;
-}</string>
-      </property>
-      <item>
-       <property name="text">
-        <string>Variable snapshots</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Difference snapshots</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Variable averages</string>
-       </property>
-      </item>
-     </widget>
-     <widget class="QStackedWidget" name="mainStackedWidget">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <layout class="QVBoxLayout" name="mainSnapLayout"/>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
