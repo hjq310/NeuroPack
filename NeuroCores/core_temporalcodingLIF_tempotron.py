@@ -213,33 +213,52 @@ def plast(net, time):
                 pulseList = net.neg_pulseList
             print("weight change:", dW)
             w,b = net.ConnMat[preidx, neuron, 0:2]
-            p = dW + net.state.weights[preidx, neuron - net.inputNum, time]
-            #print(" final weight should be: %f" % p)
-            # look up table mapping
-            R_expect = 1 / p #expected R
-            #print('expected R:', R_expect)
             R = net.read(w, b) # current R
-            #print('current R:', R)
-            virtualMemristor = memristorPulses(net.dt, net.Ap, net.An, net.a0p, net.a1p, net.a0n, net.a1n, net.tp, net.tn, R)
-            pulseParams = virtualMemristor.BestPulseChoice(R_expect, pulseList) # takes the best pulse choice
-            #print('pulse selected:', pulseParams)
-            net.pulse(w, b, pulseParams[0], pulseParams[1])
-            R_real = net.read(w, b)
-            #print('new R:', R_real)
-            p_real = 1 / R_real
-            #print('new weight:', p_real)
-            p_error = p_real - p
-            #print('weight error:', p_error)
+            net.state.R[preidx, neuron - net.inputNum, time*4+1] = R
+            if allNeuronsThatFire[preidx] == 0:
+                continue
+            grad = error[neuron] * allNeuronsThatFire[preidx]
+            dW = (-1) * learningRate * grad
+#            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
+#                pulseList = net.neg_pulseList
+#            else:
+#                pulseList = net.pos_pulseList
+            p = 1 / R
             if net.params.get('NORMALISE', False):
-                net.state.weights[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p_real)
+                p_norm = normalise_weight(net, p)
+                p_expect = dW + p_norm
+                R_expect = de_normalise_resistance(net, p_expect)
+            else:
+                p_expect = dW + p # new weights
+                R_expect = 1 / p_expect #expected R
+            # look up table mapping
+#            while abs(R - R_expect)/R_expect > 0.0035 and step <= 10:
+            for step in range(net.maxSteps):
+                if abs(R - R_expect)/R_expect < net.RTolerance:
+                    break
+                if R - R_expect > 0:    # resistance needs to be decreased
+                    pulseList = net.neg_pulseList
+                else:   # resistance needs to be increased
+                    pulseList = net.pos_pulseList
+                virtualMemristor = memristorPulses(net.dt, net.Ap, net.An, net.a0p, net.a1p, net.a0n, net.a1n, net.tp, net.tn, R)
+                pulseParams = virtualMemristor.BestPulseChoice(R_expect, pulseList) # takes the best pulse choice
+                del virtualMemristor
+                R = net.read(w, b)
+            R_real = net.read(w, b)
+            net.state.R[preidx, neuron - net.inputNum, time*4+2] = R_real
+            p_real = 1 / R_real
+            p_error = p_real - p_expect
+            if net.params.get('NORMALISE', False):
+                net.state.weights[preidx, neuron - net.inputNum - net.inputNum, time+1] = normalise_weight(net, p_real)
                 net.state.weightsExpected[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p)
                 net.state.weightsError[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p_error)
             else:
                 net.state.weights[preidx, neuron - net.inputNum, time+1] = p_real
                 net.state.weightsExpected[preidx, neuron - net.inputNum, time+1] = p
                 net.state.weightsError[preidx, neuron - net.inputNum, time+1] = p_error
-            net.log(" weight change for synapse %d -- %d from %f to %f" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time-1], net.state.weights[preidx, neuron - net.inputNum, time]))
-
+            net.log(" weight change for synapse %d -- %d from %f to %f in step %d" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1], time))
+            net.log('---------------')
+            
     net.state.voltMax = np.array(net.NETSIZE*[0.0])
     net.state.tMax = 0
     net.state.spikeTrain_cnt = 0

@@ -22,21 +22,21 @@ def init(net):
     net.spikeTrain_cnt = 0
     net.errorSteps_cnt = 0
     net.errorStepsForTest_cnt = 0
-    # Renormalise weights if needed    
+    # Renormalise weights if needed
     if not net.params.get('NORMALISE', False):
         return
 
     for postidx in range(len(net.ConnMat)):
         # For every presynaptic input the neuron receives.
         for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
-            old_weight = net.state.weights[preidx, postidx, 0]
+            old_weight = net.state.weights[preidx, postidx - net.inputNum, 0]
             new_weight = normalise_weight(net, old_weight)
-            net.state.weights[preidx, postidx, 0] = new_weight
-            
+            net.state.weights[preidx, postidx - net.inputNum, 0] = new_weight
+
     c = net.params.get('C', -0.065) # after-spike reset value of v
     b = net.params.get('B', 0.2)    # sensitivity of u to v
     for postidx in range(len(net.ConnMat)):
-        net.state.NeurAccum[0][postidx] = c 
+        net.state.NeurAccum[0][postidx] = c
         net.state.NeurRecov[0][postidx] = b * net.state.NeurAccum[0][postidx]
 
 def neurons(net, time):
@@ -44,12 +44,12 @@ def neurons(net, time):
     rawin = net.rawin # Raw input
     stimin = net.stimin[:, time] # Stimulus input for current timestep
 
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))     
+    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))
     outputLabelMask = np.hstack((np.zeros(net.inputNum), np.ones(net.outputNum)))
-    
+
     inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # split input stimulus and output labels
     outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])
-    
+
     full_stim = np.bitwise_or([int(x) for x in rawin], [int(x) for x in inputStim])
     net.log("**** FULL_STIM = ", full_stim)
 
@@ -58,8 +58,8 @@ def neurons(net, time):
     # if v > v_peak_boundary: v <- c, u <- u + d
     # v: membrane voltage; u: recovery variable
     a = net.params.get('A', 0.02)   # time constant of u
-    b = net.params.get('B', 0.2)    # sensitivity of u to v 
-    c = net.params.get('C', -0.065) # after-spike reset value of v 
+    b = net.params.get('B', 0.2)    # sensitivity of u to v
+    c = net.params.get('C', -0.065) # after-spike reset value of v
     d = net.params.get('D', 0.2)    # increment of u after spike
     dt = net.params.get('TIMESTEP', 1e-3)
     v_peak_boundary = net.params.get('VPEAK', 0.03)
@@ -73,7 +73,7 @@ def neurons(net, time):
     for (idx, v) in enumerate(rawin):
         if v != c:
             net.state.NeurAccum[time][idx] = c
-            net.state.NeurRecov[time][idx] += d  
+            net.state.NeurRecov[time][idx] += d
 
     # For this example we'll make I&F neurons - if changing this file a back-up
     # is strongly recommended before proceeding.
@@ -87,7 +87,7 @@ def neurons(net, time):
     # STAGE I: See what neurons do 'freely', i.e. without the constraints of
     # WTA or generally other neurons' activities.
     for postidx in range(len(net.state.NeurAccum[time])):
-        
+
         v = net.state.NeurAccum[time][postidx]
         u = net.state.NeurRecov[time][postidx]#!!!!!
         dv = v * v * 0.04 + v * 5 + 140 - u
@@ -99,20 +99,20 @@ def neurons(net, time):
             if net.ConnMat[preidx, postidx, 2] > 0:
                 # net.log("Excitatory at %d %d" % (preidx, postidx))
                 # Accumulator increases as per standard formula.
-                dv += full_stim[preidx] * net.state.weights[preidx, postidx, time]
+                dv += full_stim[preidx] * net.state.weights[preidx, postidx - net.inputNum, time]
 
                 net.log("POST=%d PRE=%d NeurAccum=%g full_stim=%g weight=%g" % \
                     (postidx, preidx, net.state.NeurAccum[time][postidx], \
-                     full_stim[preidx], net.state.weights[preidx, postidx, time]))
+                     full_stim[preidx], net.state.weights[preidx, postidx - net.inputNum, time]))
 
             # Inhibitory case
             elif net.ConnMat[preidx, postidx, 2] < 0:
                 # Accumulator decreases as per standard formula.
-                dv -= full_stim[preidx]*net.state.weights[preidx, postidx, time]
+                dv -= full_stim[preidx]*net.state.weights[preidx, postidx - net.inputNum, time]
 
         net.state.NeurAccum[time][postidx] += dv * dt
         net.state.NeurRecov[time][postidx] += du * dt #!!!!!!!!
-        
+
     # Have neurons declare 'interest to fire'.
     for neuron in range(len(net.state.NeurAccum[time])):
         if net.state.NeurAccum[time][neuron] > v_peak_boundary:
@@ -159,55 +159,64 @@ def plast(net, time):
             # delta = (y - y_hat)*noise
             # gradient = delta * input
             delta = (rawin[neuron] - outputLabel[neuron])
-            error[neuron] = delta * np.random.rand() * noiseScale  
+            error[neuron] = delta * np.random.rand() * noiseScale
             print("neuron %d has delta %f and error %f" % (neuron, delta, error[neuron]))
-        elif neuron < fullNum - net.outputNum and neuron >= net.inputNum:   # hidden neurons            
-            error[neuron] = directRandomTargetProj[neuron] * np.random.rand() * noiseScale 
+        elif neuron < fullNum - net.outputNum and neuron >= net.inputNum:   # hidden neurons
+            error[neuron] = directRandomTargetProj[neuron] * np.random.rand() * noiseScale
         else:   # input neuron
             continue
-                    
+
         if error[neuron] == 0.0:
             continue
-                    
-        # For every presynaptic input the neuron receives, back propogate the error    
+
+        # For every presynaptic input the neuron receives, back propogate the error
         for preidx in np.where(net.ConnMat[:, neuron, 0] != 0)[0]:
             w,b = net.ConnMat[preidx, neuron, 0:2]
+            R = net.read(w, b) # current R
+            net.state.R[preidx, neuron - net.inputNum, time*4+1] = R
             if allNeuronsThatFire[preidx] == 0:
                 continue
             grad = error[neuron] * allNeuronsThatFire[preidx]
-            print(" gradient: %f" % grad)
             dW = (-1) * learningRate * grad
-            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
-                pulseList = net.neg_pulseList 
-            else:   
-                pulseList = net.pos_pulseList            
-            print(" weight change: %f" % dW)
-            p = dW + net.state.weights[preidx, neuron, time+1] # new weights
-            #print(" final weight should be: %f" % p)
-            # look up table mapping
-            R_expect = 1 / p #expected R 
-            #print('expected R:', R_expect)
-            R = net.read(w, b) # current R
-            #print('current R:', R)
-            virtualMemristor = memristorPulses(net.dt, net.Ap, net.An, net.a0p, net.a1p, net.a0n, net.a1n, net.tp, net.tn, R)
-            pulseParams = virtualMemristor.BestPulseChoice(R_expect, pulseList) # takes the best pulse choice
-            #print('pulse selected:', pulseParams)
-            net.pulse(w, b, pulseParams[0], pulseParams[1])
-            R_real = net.read(w, b)
-            #print('new R:', R_real)
-            p_real = 1 / R_real 
-            #print('new weight:', p_real)
-            p_error = p_real - p 
-            #print('weight error:', p_error)
+#            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
+#                pulseList = net.neg_pulseList
+#            else:
+#                pulseList = net.pos_pulseList
+            p = 1 / R
             if net.params.get('NORMALISE', False):
-                net.state.weights[preidx, neuron, time+1] = normalise_weight(net, p_real)
-                net.state.weightsExpected[preidx, neuron, time+1] = normalise_weight(net, p)
-                net.state.weightsError[preidx, neuron, time+1] = normalise_weight(net, p_error)
+                p_norm = normalise_weight(net, p)
+                p_expect = dW + p_norm
+                R_expect = de_normalise_resistance(net, p_expect)
             else:
-                net.state.weights[preidx, neuron, time+1] = p_real
-                net.state.weightsExpected[preidx, neuron, time+1] = p
-                net.state.weightsError[preidx, neuron, time+1] = p_error
-            net.log(" weight change for synapse %d -- %d from %f to %f" % (preidx, neuron, net.state.weights[preidx, neuron, time], net.state.weights[preidx, neuron, time+1]))            
+                p_expect = dW + p # new weights
+                R_expect = 1 / p_expect #expected R
+            # look up table mapping
+#            while abs(R - R_expect)/R_expect > 0.0035 and step <= 10:
+            for step in range(net.maxSteps):
+                if abs(R - R_expect)/R_expect < net.RTolerance:
+                    break
+                if R - R_expect > 0:    # resistance needs to be decreased
+                    pulseList = net.neg_pulseList
+                else:   # resistance needs to be increased
+                    pulseList = net.pos_pulseList
+                virtualMemristor = memristorPulses(net.dt, net.Ap, net.An, net.a0p, net.a1p, net.a0n, net.a1n, net.tp, net.tn, R)
+                pulseParams = virtualMemristor.BestPulseChoice(R_expect, pulseList) # takes the best pulse choice
+                del virtualMemristor
+                R = net.read(w, b)
+            R_real = net.read(w, b)
+            net.state.R[preidx, neuron - net.inputNum, time*4+2] = R_real
+            p_real = 1 / R_real
+            p_error = p_real - p_expect
+            if net.params.get('NORMALISE', False):
+                net.state.weights[preidx, neuron - net.inputNum - net.inputNum, time+1] = normalise_weight(net, p_real)
+                net.state.weightsExpected[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p)
+                net.state.weightsError[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p_error)
+            else:
+                net.state.weights[preidx, neuron - net.inputNum, time+1] = p_real
+                net.state.weightsExpected[preidx, neuron - net.inputNum, time+1] = p
+                net.state.weightsError[preidx, neuron - net.inputNum, time+1] = p_error
+            net.log(" weight change for synapse %d -- %d from %f to %f in step %d" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1], time))
+            net.log('---------------')
 
     # For every valid connection between neurons, find out which the
     # corresponding memristor is. Then, if the weight is still uninitialised
@@ -216,23 +225,23 @@ def plast(net, time):
         for postidx in range(len(rawin)):
             if net.ConnMat[preidx, postidx, 0] != 0:
                 w, b = net.ConnMat[preidx, postidx, 0:2]
-                if net.state.weights[preidx, postidx, time] == 0.0:
-                    net.state.weights[preidx, postidx, time] = \
+                if net.state.weights[preidx, postid - net.inputNumx, time] == 0.0:
+                    net.state.weights[preidx, postidx - net.inputNum, time] = \
                         1.0/net.read(w, b, "NN")
-                        
-    net.state.errorSteps_cnt = time                     
+
+    net.state.errorSteps_cnt = time
 
 def neuronsForTest(net, time):
 
     rawin = net.rawin # Raw input
     stimin = net.stiminForTesting[:, time] # Stimulus input for current timestep
 
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))     
+    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))
     outputLabelMask = np.hstack((np.zeros(net.inputNum), np.ones(net.outputNum)))
-    
+
     inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # split input stimulus and output labels
     outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])
-    
+
     full_stim = np.bitwise_or([int(x) for x in rawin], [int(x) for x in inputStim])
     net.log("**** FULL_STIM = ", full_stim)
 
@@ -241,8 +250,8 @@ def neuronsForTest(net, time):
     # if v > v_peak_boundary: v <- c, u <- u + d
     # v: membrane voltage; u: recovery variable
     a = net.params.get('A', 0.02)   # time constant of u
-    b = net.params.get('B', 0.2)    # sensitivity of u to v 
-    c = net.params.get('C', -0.065) # after-spike reset value of v 
+    b = net.params.get('B', 0.2)    # sensitivity of u to v
+    c = net.params.get('C', -0.065) # after-spike reset value of v
     d = net.params.get('D', 0.2)    # increment of u after spike
     dt = net.params.get('TIMESTEP', 1e-3)
     v_peak_boundary = net.params.get('VPEAK', 0.03)
@@ -256,7 +265,7 @@ def neuronsForTest(net, time):
     for (idx, v) in enumerate(rawin):
         if v != c:
             net.state.NeurAccumForTest[time][idx] = c
-            net.state.NeurRecovForTest[time][idx] += d  
+            net.state.NeurRecovForTest[time][idx] += d
 
     # For this example we'll make I&F neurons - if changing this file a back-up
     # is strongly recommended before proceeding.
@@ -270,7 +279,7 @@ def neuronsForTest(net, time):
     # STAGE I: See what neurons do 'freely', i.e. without the constraints of
     # WTA or generally other neurons' activities.
     for postidx in range(len(net.state.NeurAccumForTest[time])):
-        
+
         v = net.state.NeurAccumForTest[time][postidx]
         u = net.state.NeurRecovForTest[time][postidx]#!!!!!
         dv = v * v * 0.04 + v * 5 + 140 - u
@@ -282,20 +291,20 @@ def neuronsForTest(net, time):
             if net.ConnMat[preidx, postidx, 2] > 0:
                 # net.log("Excitatory at %d %d" % (preidx, postidx))
                 # Accumulator increases as per standard formula.
-                dv += full_stim[preidx] * net.weightsForTest[preidx, postidx, time]
+                dv += full_stim[preidx] * net.weightsForTest[preidx, postidx - net.inputNum, time]
 
                 net.log("POST=%d PRE=%d NeurAccum=%g full_stim=%g weight=%g" % \
                     (postidx, preidx, net.state.NeurAccumForTest[time][postidx], \
-                     full_stim[preidx], net.weightsForTest[preidx, postidx, time]))
+                     full_stim[preidx], net.weightsForTest[preidx, postidx - net.inputNum, time]))
 
             # Inhibitory case
             elif net.ConnMat[preidx, postidx, 2] < 0:
                 # Accumulator decreases as per standard formula.
-                dv -= full_stim[preidx]*net.weightsForTest[preidx, postidx, time]
+                dv -= full_stim[preidx]*net.weightsForTest[preidx, postidx - net.inputNum, time]
 
         net.state.NeurAccumForTest[time][postidx] += dv * dt
         net.state.NeurRecovForTest[time][postidx] += du * dt #!!!!!!!!
-        
+
     # Have neurons declare 'interest to fire'.
     for neuron in range(len(net.state.NeurAccum[time])):
         if net.state.NeurAccumForTest[time][neuron] > v_peak_boundary:
@@ -316,8 +325,8 @@ def neuronsForTest(net, time):
 
     # Load 'NN'.
     net.state.fireCellsForTest[time] = full_stim
-    net.state.errorListForTest = wantToFire - outputLabel 
-    
+    net.state.errorListForTest = wantToFire - outputLabel
+
 def additional_data(net):
     # This function should return any additional data that might be produced
     # by this core. In this particular case there are None.
