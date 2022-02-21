@@ -137,7 +137,7 @@ def neurons(net, time, phase = 'training'):
         full_stim = np.bitwise_or([int(x) for x in wantToFire], [int(x) for x in inputStim])
 
         net.log("POST=%d NeurAccum=%g in step %d" % (postidx, net.state.NeurAccum[time][postidx - net.inputNum], time))
-        net.state.firingCellsPseudo = wantToFire # fire hist without wta. This info will be used to reset data.
+    net.state.firingCellsPseudo = wantToFire # fire hist without wta. This info will be used to reset data.
 
 #        f = open("C:/Users/jh1d18/debug_log.txt", "a")
 #        f.write('--------------\n')
