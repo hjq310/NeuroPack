@@ -51,7 +51,7 @@ class NetworkState(object):
         self.weight_addresses = []
         #self.weights = np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
         self.weights = np.array((NETSIZE - outputNum) * [(NETSIZE - inputNum) * [epochs * labelCounter * [0.0]]])
-        self.R = np.array((NETSIZE-outputNum) * [(NETSIZE - inputNum) * [4 * epochs * labelCounter * [0.0]]])
+        #self.R = np.array((NETSIZE-outputNum) * [(NETSIZE - inputNum) * [4 * epochs * labelCounter * [0.0]]])
         #self.weightsExpected =np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
         self.weightsExpected =np.array((NETSIZE-outputNum) * [outputNum * [epochs * labelCounter * [0.0]]])
         #self.weightsError = np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
@@ -357,7 +357,7 @@ class Network(BaseThreadWrapper):
             # error between outputs and labels. No error for unsupervised learning
             data['error'] = self.state.errorList
             data['errorForTest'] = self.state.errorListForTest
-            data['R'] = self.state.R
+            #data['R'] = self.state.R
 
             # and then any other arrays the core has produced
             additional_data = self.core.additional_data(self)
