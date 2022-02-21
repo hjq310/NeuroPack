@@ -28,18 +28,17 @@ The network
 Common argument for all functions is the network itself (`net`). The network
 should have the following fields defined.
 
-* `LTP_V` and `LTP_pw`: Voltage and pulse width for potentiation
-* `LTD_V` and `LTD_pw`: Voltage and pulse width for depression
-* `epochs`: The total number of timesteps
+* `epochs`: The total number of timesteps for training
+* `epochsForTesting`: The total number of timesteps for testing
 * `NETSIZE`: The total number of neurons
-* `LTPWIN` and `LTDWIN`: Window for LTP and LTD
 * `DEPTH`: Depth of the network
+* `Ap`, `An`, `a0p`, `a1p`, `a0n`, `a1n`, `tp`, `tn`: memristor parameters
 * `rawin`: The raw state of all neurons
 * `stimin`: The stimulus input (see NeuroData/motif_stim.txt for an example)
 * `ConnMat`: The connectivity matrix (see NeuroData/motif_connmat.txt for an
   example)
 * `params`: A dict containing any user defined parameters defined in the base
-  configuration excluding `NETSIZE`, `LTPWIN`, `LTDWIN` and `DEPTH` that must
+  configuration excluding `NETSIZE`, `DEPTH`, `Pattern ` that must
   be *always* defined.  By using an alternate base configuration file (see
   NeuroData/Neurobase.json for the base configuration) additional parameters can
   be introduced and will be available under the `params` dict.
@@ -60,4 +59,5 @@ current status of the network and has the following fields defined.
   `neurons` step.
 * `fireHist`: History of firing neurons. It should be updated during the
   `neurons` step.
+
 
