@@ -1,6 +1,6 @@
 import numpy as np
 from .memristorPulses import memristorPulses as memristorPulses
-# This core implements feed forward NNs with LIF neurons. The output neurons of the NN can fire without restriction.
+# This core implements feed forward NNs with LIF neurons. No more than one output neuron can fire due to winner-take-all restrictions.
 # Synapses are updated according to back propagation SGD, with the derivative of the step function replaced by noise.
 # This core can be used for multi-layer cases.
 
@@ -54,8 +54,8 @@ def neurons(net, time):
     rawin = net.rawin # Raw input
     stimin = net.stimin[:, time] # Stimulus input for current timestep
 
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))
-    outputLabelMask = np.hstack((np.zeros(net.inputNum), np.ones(net.outputNum)))
+    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.NETSIZE - net.inputNum)))  # mask matrix to extract input spikes
+    outputLabelMask = np.hstack((np.zeros(net.NETSIZE - net.outputNum), np.ones(net.outputNum))) # mask matrix to extract output labels
 
     inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # split input stimulus and output labels
     outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])

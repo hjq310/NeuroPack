@@ -46,24 +46,24 @@ class NetworkState(object):
     training process. All history is available.
     """
 
-    def __init__(self, NETSIZE, DEPTH, outputNum, epochs, epochsForTesting, temporalCoding_enable, spikeTrain, labelCounter=1):
+    def __init__(self, NETSIZE, DEPTH, inputNum, outputNum, epochs, epochsForTesting, temporalCoding_enable, spikeTrain, labelCounter=1):
         super(NetworkState, self).__init__()
         self.weight_addresses = []
         #self.weights = np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
-        self.weights = np.array((NETSIZE-outputNum)*[outputNum*[epochs*labelCounter*[0.0]]])
-        self.R = np.array((NETSIZE-outputNum)*[outputNum*[4*epochs*labelCounter*[0.0]]])
+        self.weights = np.array((NETSIZE - outputNum) * [(NETSIZE - inputNum) * [epochs * labelCounter * [0.0]]])
+        self.R = np.array((NETSIZE-outputNum) * [(NETSIZE - inputNum) * [4 * epochs * labelCounter * [0.0]]])
         #self.weightsExpected =np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
-        self.weightsExpected =np.array((NETSIZE-outputNum)*[outputNum*[epochs*labelCounter*[0.0]]])
+        self.weightsExpected =np.array((NETSIZE-outputNum) * [outputNum * [epochs * labelCounter * [0.0]]])
         #self.weightsError = np.array(NETSIZE*[NETSIZE*[epochs*labelCounter*[0.0]]])
-        self.weightsError = np.array((NETSIZE-outputNum)*[outputNum*[epochs*labelCounter*[0.0]]])
-        self.NeurAccum = np.zeros(shape=(epochs, NETSIZE))
-        self.NeurAccumForTest = np.zeros(shape=(epochsForTesting, NETSIZE)) #New for test
-        self.fireCells = np.array(epochs*labelCounter*[NETSIZE*[0.0]])
-        self.firingCells = np.array(NETSIZE*[0.0])
-        self.fireHist = np.array((DEPTH+1)*[NETSIZE*[0.0]])
+        self.weightsError = np.array((NETSIZE-outputNum) * [outputNum * [epochs * labelCounter * [0.0]]])
+        self.NeurAccum = np.zeros(shape=(epochs, (NETSIZE - inputNum)))
+        self.NeurAccumForTest = np.zeros(shape=(epochsForTesting, (NETSIZE - inputNum))) #New for test
+        self.fireCells = np.array(epochs * labelCounter * [NETSIZE * [0.0]])
         self.fireCellsForTest = np.array(epochsForTesting*labelCounter*[NETSIZE*[0.0]]) #New for test
-        self.firingCellsForTest = np.array(NETSIZE*[0.0]) #New for test
+        self.fireHist = np.array((DEPTH+1) * [NETSIZE * [0.0]])
         self.fireHistForTest = np.array((DEPTH+1)*[NETSIZE*[0.0]]) #New for test
+        self.firingCells = np.array(NETSIZE  * [0.0])
+        self.firingCellsPseudo = np.array(NETSIZE*[0.0])
         self.outputFlag = 0
         self.neuronFixed = 0
         self.fixedNeuronID = -1
@@ -96,16 +96,15 @@ class Network(BaseThreadWrapper):
     """
     This is the abstract represantation of the network. It includes all
     information about the training process, such as potentiation and
-    depression potential, number of epochs, the connection matrix (mapping of
-    neurons to devices), the size of the network (`NETSIZE`), as well as
-    potentiation and depression windows.
+    depression potential, number of epochs, batch size, the connection matrix (mapping of
+    neurons to devices), the size of the network (`NETSIZE`), number of neurons in each layer,
+    and training mode, etc.
 
     Network parameters are typically loaded from the network configuration file
     which is a JSON file including all the necessary arguments to initialise the
     network. The following arguments are always necessary, regardless whether they
     are used by the core or not
 
-    LTPWIN and LTDWIN: potentiation and depression potential windows
     NETSIZE: network size (number of neurons)
     DEPTH: network depth (layers of neurons)
 
@@ -134,27 +133,25 @@ class Network(BaseThreadWrapper):
     List of core-accessible values and functions
 
     * `Network.ConnMat`: The current connection matrix
-    * `Network.stimin`: Forced stimulus as loaded from the stimulus file
-    * `Network.epochs`: Total number of iterations
-    * `Network.LTP_V` and `Network.LTD_V`: Potentiation and depression
-      amplitude in Volts (these are set in the main  UI)
-    * `Network.LTP_pw` and `Network.LTD_pw`: Potentiation and depression
-      pulse widths in seconds (again these are picked up from the main
-      neuropack UI)
+    * `Network.stimin`: Forced training stimulus as loaded from the stimulus file
+    * `Network.stiminForTesting`: Forced test stimulus as loaded from the stimulus file
+    * `Network.testEnable`: The signal indicating whether test is enabled
+    * `Network.onlineEnable`: The signal indicating whether online training is enabled
+    * `Network.epochs`: Total number of training iterations
+    * `Network.epochsForTesting`: Total number of test iterations
     * `Network.NETSIZE`: Size of the network
-    * `Network.LTPWIN` and `Network.LTDWIN`: Potentiation and depression
-       windows.
     * `Network.DEPTH`: Depth of the network
+    * `Network.layers`: List of numbers of neurons in each layer
     * `Network.params`: This is a dict containing all JSON parameters as
       picked up from the configuration file.
     * `Network.state`: Complete history of weight and accumulators as well
       as calculated neuron firings. History state population is responsibility
       of the core.
+    * `Network.RTolerance` : tolerance ratio in weight updating
     * `Network.pulse(w, b, A, pw)`: Function used to pulse device `(w,b)` with
       a voltage pulse of amplitude `A` and pulse width `pw` (volts and seconds).
       This will immediately return the new resistance of the device.
     * `Network.read(w, b)`: Read-out device `(w,b)` and get its resistance.
-
     """
 
     def __init__(self, conn_mat, stimin, stiminForTesting, test_enable, data, params, tsteps, testSteps, core, labelCounter=1):
@@ -219,7 +216,7 @@ class Network(BaseThreadWrapper):
         self.lockedNeuronID = -1
         self.Vread = HW.conf.Vread
 
-        self.state = NetworkState(self.NETSIZE, self.DEPTH, self.outputNum, self.epochs, self.epochsForTesting, self.temporalCoding_enable, self.spikeTrain, labelCounter)
+        self.state = NetworkState(self.NETSIZE, self.DEPTH, self.inputNum, self.outputNum, self.epochs, self.epochsForTesting, self.temporalCoding_enable, self.spikeTrain, labelCounter)
         self.plot_counter_trigger = 100
         self.plot_counter = 0
         self.spikeTrainStep = 0
@@ -244,10 +241,13 @@ class Network(BaseThreadWrapper):
     def custom_init(self):
         if not isinstance(HW.ArC, VirtualArC):
             return
-        HW.ArC.crossbar = [[] for x in range(100+1)]
-        for w in range(100+1):
-            HW.ArC.crossbar[w].append(0)
-            for b in range(100+1):
+        #HW.ArC.crossbar = [[] for x in range(100+1)]
+        HW.ArC.crossbar = [[] for x in range(500+1)] # to test the hidden layer
+        #for w in range(100+1):
+        for w in range(500+1):
+            #HW.ArC.crossbar[w].append(0)
+            #for b in range(100+1):
+            for b in range(500+1):
                 mx=memristor(Ap=self.Ap, An=self.An, tp=self.tp, tn=self.tn, a0p=self.a0p, a0n=self.a0n, a1p=self.a1p, a1n=self.a1n)
                 mx.initialise(self.initR + (np.random.rand()-0.5)*self.variation)
                 HW.ArC.crossbar[w].append(mx)
@@ -287,6 +287,7 @@ class Network(BaseThreadWrapper):
         print('start training!')
         for t in range(self.tsteps):
             self.rawin = self.state.firingCells
+            self.rawinPseudo = self.state.firingCellsPseudo
             self.outputSpike = self.state.outputFlag
             if pattern_epoch_cnt == self.Pattern_epoch and self.neuronLock_enable == 1:
                 self.neuronLocked = 0
@@ -295,13 +296,14 @@ class Network(BaseThreadWrapper):
             else:
                 self.neuronLocked = self.state.neuronFixed
                 self.lockedNeuronID = self.state.fixedNeuronID
-            self.log("---> Time step neuron update in trianing: %d RAWIN: %s STIMIN: %s outputFlag: %d" % (t, self.rawin, self.stimin[:, t], self.outputSpike))
-            self.core.neurons(self, t)
+            self.log("---> Time step neuron update in trianing: %d RAWIN: %s STIMIN: %s RAWINPSEUDO: %s" % (t, self.rawin, self.stimin[:, t], self.rawinPseudo))
+            self.core.neurons(self, t,  phase = 'training')
             if self.neuronLock_enable:
                 pattern_epoch_cnt += 1
             self.rawin = self.state.firingCells
+            self.rawinPseudo = self.state.firingCellsPseudo
             self.outputSpike = self.state.outputFlag
-            self.log("---> Time step synapses update in trianing: %d RAWIN: %s STIMIN: %s outputFlag: %d" % (t, self.rawin, self.stimin[:, t], self.outputSpike))
+            self.log("---> Time step synapses update in trianing: %d RAWIN: %s STIMIN: %s RAWINPSEUDO: %s" % (t, self.rawin, self.stimin[:, t], self.rawinPseudo))
             self.core.plast(self, t)
             self.displayData.emit()
 
@@ -311,8 +313,9 @@ class Network(BaseThreadWrapper):
             self.weightsForTest = self.state.weights[:, :, self.tsteps - 1]
             for t in range(self.testSteps):
                 self.rawin = self.state.firingCells
-                self.log("---> Time step neuron update in testing: %d RAWIN: %s STIMIN: %s outputFlag: %d" % (t, self.rawin, self.stiminForTesting[:, t], self.outputSpike))
-                self.core.neuronsForTest(self, t)
+                self.rawinPseudo = self.state.firingCellsPseudo
+                self.log("---> Time step synapses update in trianing: %d RAWIN: %s STIMIN: %s RAWINPSEUDO: %s" % (t, self.rawin, self.stimin[:, t], self.rawinPseudo))
+                self.core.neurons(self, t, phase = 'test')
                 self.displayData.emit()
 
         self.log("Final reading of all devices")
@@ -407,6 +410,7 @@ class NeuroPack(BaseProgPanel):
         self.stim_file_fname = None
         self.test_file_fname = None
         self.output_file_fname = None
+        self.test_enable = 0
         self.initUI()
 
         fname = os.path.join(THIS_DIR, "NeuroData", "NeuroBase.json")
@@ -552,8 +556,8 @@ class NeuroPack(BaseProgPanel):
                     ]
         self.rightEdits=[]
 
-        leftInit=  ['10',\
-                    '10']
+        leftInit=  ['10000',\
+                    '10000']
 
         rightInit = ['0.21388644421061628',\
                     '-0.813018367268805',\
@@ -1213,7 +1217,7 @@ class NeuroVarSnapRowWidget(Ui_NNVarSnapRow, QtWidgets.QWidget):
         self.stepSpinBox.setMinimum(0)
         self.stepSpinBox.setMaximum(int(dataset['meta']['trials'][0])-1)
 
-        self.NeuronSpinBox.setMinimum(0)
+        self.NeuronSpinBox.setMinimum(int(self.dataset['meta']['inputNum'][0]))
         self.NeuronSpinBox.setMaximum(int(dataset['meta']['netsize'][0])-1)
 
         self.LayerSpinBox.setMinimum(1)
