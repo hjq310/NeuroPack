@@ -37,9 +37,9 @@ def init(net):
         for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
             w, b=net.ConnMat[preidx, postidx, 0:2]
             net.state.weights[preidx, postidx - net.inputNum, 0] = 1.0/net.read(w, b)
-            f = open("C:/Users/jh1d18/debug_log.txt", "a")
-            f.write('device intial state: %f, w: %d, b: %d\n' % (net.read(w, b), w, b))
-            f.close()
+#            f = open("C:/Users/jh1d18/debug_log.txt", "a")
+#            f.write('device intial state: %f, w: %d, b: %d\n' % (net.read(w, b), w, b))
+#            f.close()
             if net.params.get('NORMALISE', False):
                 old_weight = net.state.weights[preidx, postidx - net.inputNum, 0]
                 new_weight = normalise_weight(net, old_weight)
@@ -49,29 +49,20 @@ def softmax(x):
     # Compute softmax values for each sets of scores in x
     return np.exp(x) / np.sum(np.exp(x), axis=0)
 
-def neurons(net, time):
+def neurons(net, time, phase = 'training'):
 
     rawin = net.rawin # Raw input
-    stimin = net.stimin[:, time] # Stimulus input for current timestep
+    rawinPseudo = net.rawinPseudo # latest fire history without wta
+    if phase == 'test':
+        stimin = net.stiminForTesting[:, time] # Stimulus input for current timestep
+    else:
+        stimin = net.stimin[:, time] # input stimuli at this time stepp
 
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.NETSIZE - net.inputNum)))  # mask matrix to extract input spikes
-    outputLabelMask = np.hstack((np.zeros(net.NETSIZE - net.outputNum), np.ones(net.outputNum))) # mask matrix to extract output labels
+    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.NETSIZE - net.inputNum)))  # mask matrix to extract input spikes. Size: NETSIZE
+    outputLabelMask = np.hstack((np.zeros(net.NETSIZE - net.outputNum), np.ones(net.outputNum))) # mask matrix to extract output labels.  Size: NETSIZE
 
     inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # split input stimulus and output labels
     outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])
-
-    full_stim = np.bitwise_or([int(x) for x in rawin], [int(x) for x in inputStim])
-    net.log("**** FULL_STIM = ", full_stim)
-
-    if time > 0:
-        # if this isn't the first step copy the accumulators
-        # from the previous step onto the new one
-        net.state.NeurAccum[time] = net.state.NeurAccum[time-1]
-
-    # reset the accumulators of neurons that have already fired
-    for (idx, v) in enumerate(full_stim):
-        if v != 0:
-            net.state.NeurAccum[time][idx] = 0.0
 
     # For this example we'll make I&F neurons - if changing this file a back-up
     # is strongly recommended before proceeding.
@@ -80,70 +71,119 @@ def neurons(net, time):
     # NeurAccum = len(net.ConnMat)*[0] #Define neuron accumulators.
     # Neurons that unless otherwise dictated to by net or ext input will
     # fire.
+    rawinArray = np.array(rawin) # size: NETSIZE - inputNum
     wantToFire = len(net.ConnMat)*[0]
-
+    full_stim = np.bitwise_or([int(x) for x in wantToFire], [int(x) for x in inputStim])
     # Gather/define other pertinent data to function of neuron.
     leakage = net.params.get('LEAKAGE', 1.0)
-    bias = np.array(len(net.ConnMat)*[leakage]) #No active biases.
 
+    if time > 0:
+        if phase == 'test':
+            # if this isn't the first step copy the accumulators
+            # from the previous step onto the new one
+            net.state.NeurAccumForTest[time] = net.state.NeurAccumForTest[time-1]  # size: NETSIZE - inputNum
+            # reset the accumulators of neurons that have already fired
+            net.state.NeurAccumForTest[time] = net.state.NeurAccumForTest[time] * np.where(rawinArray[net.inputNum : ]  == 0, 1, 0)
+            # calculate the leakage term
+            net.state.NeurAccumForTest[time] *= (1 - leakage)
+        else:
+            # if this isn't the first step copy the accumulators
+            # from the previous step onto the new one
+            net.state.NeurAccum[time] = net.state.NeurAccum[time-1]  # size: NETSIZE - inputNum
+            net.log('membrane from last time step:', net.state.NeurAccum[time])
+            # reset the accumulators of neurons that have already fired
+            net.state.NeurAccum[time] = net.state.NeurAccum[time] * np.where(rawinArray[net.inputNum : ]  == 0, 1, 0)
+            net.log('membrane after reset:', net.state.NeurAccum[time])
+            # calculate the leakage term
+            net.state.NeurAccum[time] *= (1 - leakage)
+            net.log('membrane after adding leakage:', net.state.NeurAccum[time])
     # STAGE I: See what neurons do 'freely', i.e. without the constraints of
     # WTA or generally other neurons' activities.
-    for postidx in range(len(net.state.NeurAccum[time])):
-        # Unconditionally add bias term
-        net.state.NeurAccum[time][postidx] += bias[postidx]
-        if net.state.NeurAccum[time][postidx] < 0.0:
-            net.state.NeurAccum[time][postidx] = 0.0
-
+    for postidx in range(net.inputNum, net.NETSIZE):
         #For every presynaptic input the neuron receives.
         for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
+            # if it's in the test phase
+            if phase == 'test':
+                # Excitatory case
+                if net.ConnMat[preidx, postidx, 2] > 0:
+                    # net.log("Excitatory at %d %d" % (preidx, postidx))
+                    # Accumulator increases as per standard formula.
+                    net.state.NeurAccumForTest[time][postidx - net.inputNum] += \
+                        full_stim[preidx] * net.weightsForTest[preidx, postidx - net.inputNum]
 
-            # Excitatory case
-            if net.ConnMat[preidx, postidx, 2] > 0:
-                # net.log("Excitatory at %d %d" % (preidx, postidx))
-                # Accumulator increases as per standard formula.
-                net.state.NeurAccum[time][postidx] += \
-                    full_stim[preidx] * net.state.weights[preidx, postidx - net.inputNum, time]
+                # Inhibitory case
+                elif net.ConnMat[preidx, postidx, 2] < 0:
+                    # Accumulator decreases as per standard formula.
+                    net.state.NeurAccumForTest[time][postidx - net.inputNum] -= \
+                        full_stim[preidx]*net.weightsForTest[preidx, postidx - net.inputNum]
+            else:
+                # Excitatory case
+                if net.ConnMat[preidx, postidx, 2] > 0:
+                    # net.log("Excitatory at %d %d" % (preidx, postidx))
+                    # Accumulator increases as per standard formula.
+                    net.state.NeurAccum[time][postidx - net.inputNum] += \
+                        full_stim[preidx] * net.state.weights[preidx, postidx - net.inputNum, time]
 
-            # Inhibitory case
-            elif net.ConnMat[preidx, postidx, 2] < 0:
-                # Accumulator decreases as per standard formula.
-                net.state.NeurAccum[time][postidx] -= \
-                    full_stim[preidx]*net.state.weights[preidx, postidx - net.inputNum, time]
+                # Inhibitory case
+                elif net.ConnMat[preidx, postidx, 2] < 0:
+                    # Accumulator decreases as per standard formula.
+                    net.state.NeurAccum[time][postidx - net.inputNum] -= \
+                        full_stim[preidx]*net.state.weights[preidx, postidx - net.inputNum, time]
 
-        net.log("POST=%d NeurAccum=%g in step %d" % (postidx, net.state.NeurAccum[time][postidx], time))
-        f = open("C:/Users/jh1d18/debug_log.txt", "a")
-        f.write('--------------\n')
-        f.write("POST=%d NeurAccum=%g in step %d\n" % (postidx, net.state.NeurAccum[time][postidx], time))
-        f.close()
-    # Have neurons declare 'interest to fire'.
-    for neuron in range(len(net.state.NeurAccum[time])):
-        if net.state.NeurAccum[time][neuron] > net.params.get('FIRETH', 0.8):
-            # Register 'interest to fire'.
-            wantToFire[neuron] = 1
+        if phase == 'test' and net.state.NeurAccumForTest[time][postidx - net.inputNum] > net.params.get('FIRETH', 0.001):
+            wantToFire[postidx] = 1    # update the firehist to feedforward the spike
+        elif phase == 'training' and net.state.NeurAccum[time][postidx - net.inputNum] > net.params.get('FIRETH', 0.001):
+            wantToFire[postidx] = 1
+        full_stim = np.bitwise_or([int(x) for x in wantToFire], [int(x) for x in inputStim])
 
-    neuronID = -1
-    if sum(wantToFire[-net.outputNum:]) > 1:
-        neuronID = np.argmax(net.state.NeurAccum[time])
-        wantToFire = len(net.ConnMat)*[0]
-        wantToFire[neuronID] = 1
+        net.log("POST=%d NeurAccum=%g in step %d" % (postidx, net.state.NeurAccum[time][postidx - net.inputNum], time))
+        net.state.firingCellsPseudo = wantToFire # fire hist without wta. This info will be used to reset data.
+
+#        f = open("C:/Users/jh1d18/debug_log.txt", "a")
+#        f.write('--------------\n')
+#        f.write("POST=%d NeurAccum=%g in step %d\n" % (postidx, net.state.NeurAccum[time][postidx - net.inputNum], time))
+#        f.close()
 
     # STAGE II: Implement constraints from net-level considerations.
     # Example: WTA. No resitrictions from net level yet. All neurons that
     # want to fire will fire.
+    # In this case, we implement winner-take-all to only allow the neuron with highest memrabne voltage to fire
+    neuronID = -1
+    if phase == 'test':
+        if sum(wantToFire[-net.outputNum:]) > 1:
+            neuronID = np.argmax(net.state.NeurAccumForTest[time][-net.outputNum:])
+            winnerTakeAll = net.outputNum*[0]
+            winnerTakeAll[neuronID] = 1
+            wantToFire = wantToFire[ : net.NETSIZE - net.outputNum]
+            wantToFire.extend(winnerTakeAll)
+        # Barrel shift history
+        net.state.fireHistForTest[:-1, np.where(np.array(full_stim) != 0)[0]] = \
+            net.state.fireHistForTest[1:, np.where(np.array(full_stim) != 0)[0]]
+        # Save last firing time for all cells that fired in this time step.
+        net.state.fireHistForTest[net.DEPTH, np.where(np.array(full_stim) != 0)[0]] = \
+            time
+        # Load 'NN'.
+        net.state.fireCellsForTest[time] = wantToFire
+    else:
+        if sum(wantToFire[-net.outputNum:]) > 1:
+            neuronID = np.argmax(net.state.NeurAccum[time][-net.outputNum:])
+            net.log('firing neuron id:', neuronID + net.NETSIZE - net.outputNum)
+            winnerTakeAll = net.outputNum*[0]
+            winnerTakeAll[neuronID] = 1
+            wantToFire = wantToFire[ : net.NETSIZE - net.outputNum]
+            wantToFire.extend(winnerTakeAll)
+        net.log('wta fire state:', wantToFire)
+        # Barrel shift history
+        net.state.fireHist[:-1, np.where(np.array(full_stim) != 0)[0]] = \
+            net.state.fireHist[1:, np.where(np.array(full_stim) != 0)[0]]
+        # Save last firing time for all cells that fired in this time step.
+        net.state.fireHist[net.DEPTH, np.where(np.array(full_stim) != 0)[0]] = \
+            time
+        # Load 'NN'.
+        net.state.fireCells[time] = wantToFire
+
     net.state.firingCells = wantToFire
-
-    # Barrel shift history
-    net.state.fireHist[:-1, np.where(np.array(full_stim) != 0)[0]] = \
-        net.state.fireHist[1:, np.where(np.array(full_stim) != 0)[0]]
-    # Save last firing time for all cells that fired in this time step.
-    net.state.fireHist[net.DEPTH, np.where(np.array(full_stim) != 0)[0]] = \
-        time
-
-    # Load 'NN'.
-    net.state.fireCells[time] = wantToFire
     net.state.errorList[time] = wantToFire - outputLabel
-    print('winnner takes all results:', wantToFire)
-
 
 def plast(net, time):
 
@@ -152,16 +192,19 @@ def plast(net, time):
 
     rawin = net.rawin # Raw input
     stimin = net.stimin[:, time] # Stimulus input
+    rawinPseudo = net.rawinPseudo
 
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))
-    inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])
-    outputLabelMask = np.hstack((np.zeros(net.inputNum), np.ones(net.outputNum)))
-    outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])
-    allNeuronsThatFire = np.bitwise_or([int(x) for x in inputStim], [int(x) for x in rawin])
+    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.NETSIZE - net.inputNum))) # mask matrix to extract input spikes. Size: NETSIZE
+    outputLabelMask = np.hstack((np.zeros(net.NETSIZE - net.outputNum), np.ones(net.outputNum))) # mask matrix to extract output labels. Size: NETSIZE
+
+    inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # input spike matrix. Size: NETSIZE
+    outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin]) # output label matrix. Size: NETSIZE
+
+    allNeuronsThatFire = np.bitwise_or([int(x) for x in inputStim], [int(x) for x in rawinPseudo])
 
     net.state.weights[:, :, time+1] = net.state.weights[:, :, time]
     fullNum = len(rawin)
-    softmaxRes = softmax(np.multiply(net.state.NeurAccum[time], rawin)[-net.outputNum:])    # softmax result
+    softmaxRes = softmax(np.multiply(net.state.NeurAccum[time][-net.outputNum:], rawin[-net.outputNum:]))    # softmax result
     #softmaxRes = softmax(net.state.NeurAccum[time])    # softmax result
     net.log('softmaxRes:', softmaxRes)
     error = len(net.ConnMat)*[0]
@@ -169,34 +212,44 @@ def plast(net, time):
     learningRate = net.params.get('LEARNINGRATE', 1e-6)
     # For every neuron in the raw input
     # store R values before updating weights
-    for postidx in range(len(net.ConnMat)):
+#    for postidx in range(len(net.ConnMat)):
         # For every presynaptic input the neuron receives.
-        for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
-            w, b=net.ConnMat[preidx, postidx, 0:2]
-            r_pre = net.read(w, b)
-            net.state.R[preidx, postidx - net.inputNum, time*4] = r_pre
-            net.state.R[preidx, postidx - net.inputNum, time*4+1] = r_pre
-            net.state.R[preidx, postidx - net.inputNum, time*4+2] = r_pre
+#        for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
+#            w, b=net.ConnMat[preidx, postidx, 0:2]
+#            r_pre = net.read(w, b)
+#            net.state.R[preidx, postidx - net.inputNum, time*4] = r_pre
+#            net.state.R[preidx, postidx - net.inputNum, time*4+1] = r_pre
+#            net.state.R[preidx, postidx - net.inputNum, time*4+2] = r_pre
 
     for neuron in range(fullNum-1, -1, -1):  # update from the reversed order, in case the error hasn't been updated
         if neuron >= fullNum - net.outputNum:   # output neurons
             # delta = (S - y^hat)*(y + noise)
             # gradient = delta * weight
             net.log('neuron: %d, softmaxRes: %f, outputLabel: %d, fire hist: %d' %(neuron, softmaxRes[neuron-(fullNum - net.outputNum)], outputLabel[neuron], rawin[neuron]))
-            f = open("C:/Users/jh1d18/debug_log.txt", "a")
-            f.write('neuron: %d, softmaxRes: %f, outputLabel: %d, fire hist: %d\n' %(neuron, softmaxRes[neuron-(fullNum - net.outputNum)], outputLabel[neuron], rawin[neuron]))
+            #f = open("C:/Users/jh1d18/debug_log.txt", "a")
+            #f.write('neuron: %d, softmaxRes: %f, outputLabel: %d, fire hist: %d\n' %(neuron, softmaxRes[neuron-(fullNum - net.outputNum)], outputLabel[neuron], rawin[neuron]))
             if rawin[neuron] == outputLabel[neuron]:
                 continue
             delta = (softmaxRes[neuron-(fullNum - net.outputNum)] - outputLabel[neuron])
             net.log('delta:', delta)
-            f.write('delta:%f\n' % delta)
-            error[neuron] = delta * (outputLabel[neuron] + np.random.rand() * noiseScale)
+            #f.write('delta:%f\n' % delta)
+            if abs(net.state.NeurAccum[time][neuron - net.inputNum] - net.params.get('FIRETH', 0.001)) > net.params.get('FIRETH', 0.001):
+                error[neuron] = delta * (rawinPseudo[neuron])
+            else:
+                error[neuron] = delta * (rawinPseudo[neuron] + 0.5 * net.state.NeurAccum[time][neuron - net.inputNum]) / net.params.get('FIRETH', 0.001)
             net.log('error:', error[neuron])
-            f.write('error:%f\n'% error[neuron])
-            f.close()
+            #f.write('error:%f\n'% error[neuron])
+            #f.close()
         elif neuron < fullNum - net.outputNum and neuron >= net.inputNum:   # hidden neurons
+            if abs(net.state.NeurAccum[time][neuron - net.inputNum] - net.params.get('FIRETH', 0.001)) > net.params.get('FIRETH', 0.001):
+                sur_deriv = 0
+            else:
+                sur_deriv = 0.5 * net.state.NeurAccum[time][neuron - net.inputNum] / net.params.get('FIRETH', 0.001)
             for postidx in np.where(net.ConnMat[neuron,:, 0] != 0)[0]: # add up all error back propagated from the next layer
-                error[neuron] += error[postidx] * net.state.weights[neuron, postidx - net.inputNum, time+1] * np.random.rand() * noiseScale
+                delta_error = error[postidx] * net.state.weights[neuron, postidx - net.inputNum, time] * sur_deriv
+                error[neuron] += delta_error
+                net.log('error accumalted from neuron %d to neuron %d by %g to %g, orignal error is %g with a scale factor of %g' % (postidx, neuron, delta_error, error[neuron], error[postidx], net.state.weights[neuron, postidx - net.inputNum, time]))
+            net.log('error, membrane vltage, and surrogate derivative for neuron %d :%g, %g, %g' % (neuron, net.state.NeurAccum[time][neuron - net.inputNum], sur_deriv, error[neuron]))
         else:   # input neuron
             continue
 
@@ -208,40 +261,40 @@ def plast(net, time):
             w,b = net.ConnMat[preidx, neuron, 0:2]
             R = net.read(w, b) # current R
             net.log('current R:', R)
-            net.state.R[preidx, neuron - net.inputNum, time*4+1] = R
+            #net.state.R[preidx, neuron - net.inputNum, time*4+1] = R
             if allNeuronsThatFire[preidx] == 0:
                 continue
             grad = error[neuron] * allNeuronsThatFire[preidx]
             dW = (-1) * learningRate * grad
             net.log('dW:', dW)
-            f = open("C:/Users/jh1d18/debug_log.txt", "a")
-            f.write('dW:%f\n' % dW)
+            #f = open("C:/Users/jh1d18/debug_log.txt", "a")
+            #f.write('dW:%f\n' % dW)
 #            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
 #                pulseList = net.neg_pulseList
 #            else:
 #                pulseList = net.pos_pulseList
-            f.write('current R :%f\n' % R)
+            #f.write('current R :%f\n' % R)
             p = 1 / R
-            f.write('current weight stored:%f, %f\n'% (net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1]))
+            #f.write('current weight stored:%f, %f\n'% (net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1]))
             if net.params.get('NORMALISE', False):
                 p_norm = normalise_weight(net, p)
                 net.log('current weight:', p_norm)
-                f.write('current weight:%f\n'% p_norm)
+                #f.write('current weight:%f\n'% p_norm)
                 p_expect = dW + p_norm
                 net.log("final weight after normalised should be: %f" % p_expect)
-                f.write("final weight after normalised should be: %f\n" % p_expect)
+                #f.write("final weight after normalised should be: %f\n" % p_expect)
                 R_expect = de_normalise_resistance(net, p_expect)
             else:
                 net.log('current weight:', p)
-                f.write('current weight:%f\n'% p)
+                #f.write('current weight:%f\n'% p)
                 p_expect = dW + p # new weights
                 net.log("final weight should be: %f" % p_expect)
-                f.write("final weight should be: %f\n" % p_expect)
+                #f.write("final weight should be: %f\n" % p_expect)
                 R_expect = 1 / p_expect #expected R
             # look up table mapping
             net.log('expected R:', R_expect)
-            f.write('expected R:%f\n'% R_expect)
-            f.close()
+            #f.write('expected R:%f\n'% R_expect)
+            #f.close()
 #            while abs(R - R_expect)/R_expect > 0.0035 and step <= 10:
             for step in range(net.maxSteps):
                 if abs(R - R_expect)/R_expect < net.RTolerance:
@@ -257,20 +310,20 @@ def plast(net, time):
                 net.pulse(w, b, pulseParams[0], pulseParams[1])
                 R = net.read(w, b)
                 net.log('R:', R)
-                f = open("C:/Users/jh1d18/debug_log.txt", "a")
-                f.write('R:%f\n'% R)
-                f.close()
+                #f = open("C:/Users/jh1d18/debug_log.txt", "a")
+                #f.write('R:%f\n'% R)
+                #f.close()
             R_real = net.read(w, b)
-            net.state.R[preidx, neuron - net.inputNum, time*4+2] = R_real
+            #net.state.R[preidx, neuron - net.inputNum, time*4+2] = R_real
             net.log('new R:', R_real)
-            f = open("C:/Users/jh1d18/debug_log.txt", "a")
-            f.write('new R:%f\n'% R_real)
+            #f = open("C:/Users/jh1d18/debug_log.txt", "a")
+            #f.write('new R:%f\n'% R_real)
             p_real = 1 / R_real
             net.log('new weight:', p_real)
-            f.write('new weight:%f\n'% p_real)
+            #f.write('new weight:%f\n'% p_real)
             p_error = p_real - p_expect
             net.log('weight error:', p_error)
-            f.write('weight error:%f\n'% p_error)
+            #f.write('weight error:%f\n'% p_error)
             if net.params.get('NORMALISE', False):
                 net.state.weights[preidx, neuron - net.inputNum - net.inputNum, time+1] = normalise_weight(net, p_real)
                 net.state.weightsExpected[preidx, neuron - net.inputNum, time+1] = normalise_weight(net, p)
@@ -281,16 +334,16 @@ def plast(net, time):
                 net.state.weightsError[preidx, neuron - net.inputNum, time+1] = p_error
             net.log(" weight change for synapse %d -- %d from %f to %f in step %d" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1], time))
             net.log('---------------')
-            f.write(" weight change for synapse %d -- %d from %f to %f in step %d\n" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1], time))
-            f.write('---------------\n')
-            f.close()
+            #f.write(" weight change for synapse %d -- %d from %f to %f in step %d\n" % (preidx, neuron, net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1], time))
+            #f.write('---------------\n')
+            #f.close()
 
     for postidx in range(len(net.ConnMat)):
         # For every presynaptic input the neuron receives.
         for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
             w, b=net.ConnMat[preidx, postidx, 0:2]
             r_post = net.read(w, b)
-            net.state.R[preidx, postidx - net.inputNum, time*4+3] = r_post
+            #net.state.R[preidx, postidx - net.inputNum, time*4+3] = r_post
     # For every valid connection between neurons, find out which the
     # corresponding memristor is. Then, if the weight is still uninitialised
     # take a reading and ensure that the weight has a proper value.
@@ -303,99 +356,6 @@ def plast(net, time):
 #                        1.0/net.read(w, b)
 
     net.state.errorSteps_cnt = time
-
-def neuronsForTest(net, time):
-
-    rawin = net.rawin # Raw input
-    stimin = net.stiminForTesting[:, time] # Stimulus input for current timestep
-
-    inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.outputNum)))
-    outputLabelMask = np.hstack((np.zeros(net.inputNum), np.ones(net.outputNum)))
-
-    inputStim = np.bitwise_and([int(x) for x in inputStimMask], [int(x) for x in stimin])   # split input stimulus and output labels
-    outputLabel = np.bitwise_and([int(x) for x in outputLabelMask], [int(x) for x in stimin])
-
-    full_stim = np.bitwise_or([int(x) for x in rawin], [int(x) for x in inputStim])
-    net.log("**** FULL_STIM = ", full_stim)
-
-    if time > 0:
-        # if this isn't the first step copy the accumulators
-        # from the previous step onto the new one
-        net.state.NeurAccumForTest[time] = net.state.NeurAccumForTest[time-1]
-
-    # reset the accumulators of neurons that have already fired
-    for (idx, v) in enumerate(full_stim):
-        if v != 0:
-            net.state.NeurAccumForTest[time][idx] = 0.0
-
-    # For this example we'll make I&F neurons - if changing this file a back-up
-    # is strongly recommended before proceeding.
-
-    #  -FIX- implementing 'memory' between calls to this function.
-    # NeurAccum = len(net.ConnMat)*[0] #Define neuron accumulators.
-    # Neurons that unless otherwise dictated to by net or ext input will
-    # fire.
-    wantToFire = len(net.ConnMat)*[0]
-
-    # Gather/define other pertinent data to function of neuron.
-    leakage = net.params.get('LEAKAGE', 1.0)
-    bias = np.array(len(net.ConnMat)*[leakage]) #No active biases.
-
-    # STAGE I: See what neurons do 'freely', i.e. without the constraints of
-    # WTA or generally other neurons' activities.
-    for postidx in range(len(net.state.NeurAccumForTest[time])):
-        # Unconditionally add bias term
-        net.state.NeurAccumForTest[time][postidx] += bias[postidx]
-        if net.state.NeurAccumForTest[time][postidx] < 0.0:
-            net.state.NeurAccumForTest[time][postidx] = 0.0
-
-        #For every presynaptic input the neuron receives.
-        for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
-
-            # Excitatory case
-            if net.ConnMat[preidx, postidx, 2] > 0:
-                # net.log("Excitatory at %d %d" % (preidx, postidx))
-                # Accumulator increases as per standard formula.
-                net.state.NeurAccumForTest[time][postidx] += \
-                    full_stim[preidx] * net.weightsForTest[preidx, postidx - net.inputNum]
-
-            # Inhibitory case
-            elif net.ConnMat[preidx, postidx, 2] < 0:
-                # Accumulator decreases as per standard formula.
-                net.state.NeurAccumForTest[time][postidx] -= \
-                    full_stim[preidx]*net.weightsForTest[preidx, postidx - net.inputNum]
-
-        net.log("POST=%d NeurAccum=%g" % (postidx, net.state.NeurAccumForTest[time][postidx]))
-        f = open("C:/Users/jh1d18/debug_log.txt", "a")
-        f.write("POST=%d NeurAccum=%g\n" % (postidx, net.state.NeurAccumForTest[time][postidx]))
-        f.close()
-    # Have neurons declare 'interest to fire'.
-    for neuron in range(len(net.state.NeurAccumForTest[time])):
-        if net.state.NeurAccumForTest[time][neuron] > net.params.get('FIRETH', 0.8):
-            # Register 'interest to fire'.
-            wantToFire[neuron] = 1
-
-    neuronID = -1
-    if sum(wantToFire[-net.outputNum:]) > 1:
-        neuronID = np.argmax(net.state.NeurAccumForTest[time])
-        wantToFire = len(net.ConnMat)*[0]
-        wantToFire[neuronID] = 1
-    # STAGE II: Implement constraints from net-level considerations.
-    # Example: WTA. No resitrictions from net level yet. All neurons that
-    # want to fire will fire.
-    net.state.firingCellsForTest = wantToFire
-
-    # Barrel shift history
-    net.state.fireHistForTest[:-1, np.where(np.array(full_stim) != 0)[0]] = \
-        net.state.fireHistForTest[1:, np.where(np.array(full_stim) != 0)[0]]
-    # Save last firing time for all cells that fired in this time step.
-    net.state.fireHistForTest[net.DEPTH, np.where(np.array(full_stim) != 0)[0]] = \
-        time
-
-    # Load 'NN'.
-    net.state.fireCellsForTest[time] = wantToFire
-    net.state.errorListForTest[time] = wantToFire - outputLabel
-    print('winnner takes all results:', wantToFire)
 
 def additional_data(net):
     # This function should return any additional data that might be produced
