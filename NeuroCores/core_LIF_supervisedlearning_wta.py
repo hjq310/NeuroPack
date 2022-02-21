@@ -56,7 +56,7 @@ def neurons(net, time, phase = 'training'):
     if phase == 'test':
         stimin = net.stiminForTesting[:, time] # Stimulus input for current timestep
     else:
-        stimin = net.stimin[:, time] # input stimuli at this time stepp
+        stimin = net.stimin[:, time] # input stimuli at this time step
 
     inputStimMask = np.hstack((np.ones(net.inputNum), np.zeros(net.NETSIZE - net.inputNum)))  # mask matrix to extract input spikes. Size: NETSIZE
     outputLabelMask = np.hstack((np.zeros(net.NETSIZE - net.outputNum), np.ones(net.outputNum))) # mask matrix to extract output labels.  Size: NETSIZE
@@ -145,9 +145,7 @@ def neurons(net, time, phase = 'training'):
 #        f.close()
 
     # STAGE II: Implement constraints from net-level considerations.
-    # Example: WTA. No resitrictions from net level yet. All neurons that
-    # want to fire will fire.
-    # In this case, we implement winner-take-all to only allow the neuron with highest memrabne voltage to fire
+    # Example: WTA. In this case, we implement winner-take-all to only allow the neuron with highest memrabne voltage to fire
     neuronID = -1
     if phase == 'test':
         if sum(wantToFire[-net.outputNum:]) > 1:
@@ -269,10 +267,10 @@ def plast(net, time):
             net.log('dW:', dW)
             #f = open("C:/Users/jh1d18/debug_log.txt", "a")
             #f.write('dW:%f\n' % dW)
-#            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
-#                pulseList = net.neg_pulseList
-#            else:
-#                pulseList = net.pos_pulseList
+            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
+                pulseList = net.neg_pulseList
+            else:
+                pulseList = net.pos_pulseList
             #f.write('current R :%f\n' % R)
             p = 1 / R
             #f.write('current weight stored:%f, %f\n'% (net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1]))
@@ -338,11 +336,11 @@ def plast(net, time):
             #f.write('---------------\n')
             #f.close()
 
-    for postidx in range(len(net.ConnMat)):
+#    for postidx in range(len(net.ConnMat)):
         # For every presynaptic input the neuron receives.
-        for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
-            w, b=net.ConnMat[preidx, postidx, 0:2]
-            r_post = net.read(w, b)
+#        for preidx in np.where(net.ConnMat[:, postidx, 0] != 0)[0]:
+#            w, b=net.ConnMat[preidx, postidx, 0:2]
+            #r_post = net.read(w, b)
             #net.state.R[preidx, postidx - net.inputNum, time*4+3] = r_post
     # For every valid connection between neurons, find out which the
     # corresponding memristor is. Then, if the weight is still uninitialised
