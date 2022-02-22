@@ -67,7 +67,7 @@ class NetworkState(object):
         self.outputFlag = 0
         self.neuronFixed = 0
         self.fixedNeuronID = -1
-        self.voltMax = np.array(NETSIZE*[0.0])
+        self.voltMax = np.array((NETSIZE - inputNum)*[0.0])
         self.voltMaxForTest = np.array(NETSIZE*[0.0])
         self.tMax = 0
         self.NeurRecov = np.zeros(shape=(epochs, NETSIZE))
@@ -211,7 +211,6 @@ class Network(BaseThreadWrapper):
         self.testSteps = testSteps
         self.rawin = np.array(self.NETSIZE*[0])
         self.rawin_pseudo = np.array(self.NETSIZE*[0])
-        self.outputSpike = 0
         self.neuronLocked = 0
         self.lockedNeuronID = -1
         self.Vread = HW.conf.Vread
@@ -288,7 +287,6 @@ class Network(BaseThreadWrapper):
         for t in range(self.tsteps):
             self.rawin = self.state.firingCells
             self.rawinPseudo = self.state.firingCellsPseudo
-            self.outputSpike = self.state.outputFlag
             if pattern_epoch_cnt == self.Pattern_epoch and self.neuronLock_enable == 1:
                 self.neuronLocked = 0
                 self.lockedNeuronID = -1
@@ -302,7 +300,6 @@ class Network(BaseThreadWrapper):
                 pattern_epoch_cnt += 1
             self.rawin = self.state.firingCells
             self.rawinPseudo = self.state.firingCellsPseudo
-            self.outputSpike = self.state.outputFlag
             self.log("---> Time step synapses update in trianing: %d RAWIN: %s STIMIN: %s RAWINPSEUDO: %s" % (t, self.rawin, self.stimin[:, t], self.rawinPseudo))
             self.core.plast(self, t)
             self.displayData.emit()

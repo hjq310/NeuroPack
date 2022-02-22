@@ -48,7 +48,7 @@ def init(net):
                 new_weight = normalise_weight(net, old_weight)
                 net.state.weights[preidx, postidx - net.inputNum, 0] = new_weight
 
-def neurons(net, time):
+def neurons(net, time, phase = 'training'):
 
     rawin = net.rawin # Raw input
     rawinPseudo = net.rawinPseudo # latest fire history without wta
@@ -227,10 +227,10 @@ def plast(net, time):
             #print(" gradient: %f" % grad)
             dW = (-1) * learningRate * grad
             #print(" weight change: %f" % dW)
-            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
-                pulseList = net.neg_pulseList
-            else:
-                pulseList = net.pos_pulseList
+#            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
+#                pulseList = net.neg_pulseList
+#            else:
+#                pulseList = net.pos_pulseList
             p = 1 / R # new weights
             if net.params.get('NORMALISE', False):
                 p_norm = normalise_weight(net, p)

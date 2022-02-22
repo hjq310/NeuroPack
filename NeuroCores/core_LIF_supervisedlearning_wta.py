@@ -267,10 +267,10 @@ def plast(net, time):
             net.log('dW:', dW)
             #f = open("C:/Users/jh1d18/debug_log.txt", "a")
             #f.write('dW:%f\n' % dW)
-            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
-                pulseList = net.neg_pulseList
-            else:
-                pulseList = net.pos_pulseList
+#            if dW > 0: # conductance needs to be larger, so a negative pulse is suplied
+#                pulseList = net.neg_pulseList
+#            else:
+#                pulseList = net.pos_pulseList
             #f.write('current R :%f\n' % R)
             p = 1 / R
             #f.write('current weight stored:%f, %f\n'% (net.state.weights[preidx, neuron - net.inputNum, time], net.state.weights[preidx, neuron - net.inputNum, time+1]))
