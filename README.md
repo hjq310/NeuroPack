@@ -1,6 +1,8 @@
 # NeuroPack
 Paper available here: [NeuroPack: An Algorithm-level Python-based Simulator for Memristor-empowered Neuro-inspired Computing](https://arxiv.org/abs/2201.03339)
 
+`experimentalResults.npz` gives experimental results shown in the paper.
+
 NeuroPack is an algorithm-level simulator for memrsitor-based neuromorphic designs. It incorporates an empirical memristor model [here](https://arxiv.org/abs/1703.01167) to simulate how memristor states change during an online-training process.
 To get memristor fitting parameters, please use [ArC One](https://github.com/arc-instruments/arc1_pyqt) instrument module 'ParameterFit'.
 
