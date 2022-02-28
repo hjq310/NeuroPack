@@ -231,7 +231,7 @@ def plast(net, time):
             if abs(net.state.NeurAccum[time][neuron - net.inputNum] - net.params.get('FIRETH', 0.001)) > net.params.get('FIRETH', 0.001):
                 sur_deriv = 0
             else:
-                sur_deriv = 0.5 * net.state.NeurAccum[time][neuron - net.inputNum] / net.params.get('FIRETH', 0.001)
+                sur_deriv = 0.5 / net.params.get('FIRETH', 0.001)
             for postidx in np.where(net.ConnMat[neuron,:, 0] != 0)[0]: # add up all error back propagated from the next layer
                 delta_error = error[postidx] * net.state.weights[neuron, postidx - net.inputNum, time] * sur_deriv
                 error[neuron] += delta_error

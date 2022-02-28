@@ -227,7 +227,7 @@ def plast(net, time):
             if abs(net.state.NeurAccum[time][neuron - net.inputNum] - net.params.get('FIRETH', 0.001)) > net.params.get('FIRETH', 0.001):
                 error[neuron] = 0
             else:
-                error[neuron] = delta * 0.5 * net.state.NeurAccum[time][neuron - net.inputNum] / net.params.get('FIRETH', 0.001)
+                error[neuron] = delta * 0.5 / net.params.get('FIRETH', 0.001)
             print("neuron %d has delta %f and error %f" % (neuron, delta, error[neuron]))
         elif neuron < fullNum - net.outputNum and neuron >= net.inputNum:   # hidden neurons
             if abs(net.state.NeurAccum[time][neuron - net.inputNum] - net.params.get('FIRETH', 0.001)) > net.params.get('FIRETH', 0.001):
