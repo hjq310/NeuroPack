@@ -1,5 +1,5 @@
 # NeuroPack
-Paper available here: [NeuroPack: An Algorithm-level Python-based Simulator for Memristor-empowered Neuro-inspired Computing](https://arxiv.org/abs/2201.03339)
+Paper available here: [NeuroPack: An Algorithm-level Python-based Simulator for Memristor-empowered Neuro-inspired Computing](https://www.frontiersin.org/article/10.3389/fnano.2022.851856)
 
 `experimentalResults.npz` gives experimental results shown in the paper.
 
@@ -48,12 +48,14 @@ If you want to reproduce the results showcased in the paper 'NeuroPack: An Algor
 ---
 #### Citation
 ```
-@misc{huang2022neuropack,
-      title={NeuroPack: An Algorithm-level Python-based Simulator for Memristor-empowered Neuro-inspired Computing},
-      author={Jinqi Huang and Spyros Stathopoulos and Alex Serb and Themis Prodromakis},
-      year={2022},
-      eprint={2201.03339},
-      archivePrefix={arXiv},
-      primaryClass={cs.ET}
+@ARTICLE{NeuroPack,
+AUTHOR={Huang, Jinqi and Stathopoulos, Spyros and Serb, Alexantrou and Prodromakis, Themis},   
+TITLE={NeuroPack: An Algorithm-Level Python-Based Simulator for Memristor-Empowered Neuro-Inspired Computing},      	
+JOURNAL={Frontiers in Nanotechnology},      
+VOLUME={4},      	
+YEAR={2022},       
+URL={https://www.frontiersin.org/article/10.3389/fnano.2022.851856},       	
+DOI={10.3389/fnano.2022.851856},      	
+ISSN={2673-3013}
 }
 ```
